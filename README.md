@@ -4,9 +4,9 @@
 ## Search
  Returns list of GPS with index number.
 ### Options:
-  Keyword: Returns all GPS contianing keyword.
-  Reference Point: Returns GPS closests to furthest from refrence.
-  Distance: Removes all GPS beyond X distance from a refernce search.
+  #### Keyword: Returns all GPS contianing keyword.
+  #### Reference Point: Returns GPS closests to furthest from refrence.
+  #### Distance: Removes all GPS beyond X distance from a refernce search.
 ## Add_GPS
  Adds one or more GPS Points
 ## Remove_GPS_By index range
