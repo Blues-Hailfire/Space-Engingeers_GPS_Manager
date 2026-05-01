@@ -39,13 +39,28 @@ def main():
         venv_python = VENV_DIR / "bin" / "python"
 
     # ── Ensure pip is available inside the venv ───────────────────────────
-    # On some Linux distros the venv is created without pip; bootstrap it.
-    try:
-        run(str(venv_python), "-m", "pip", "--version",
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except subprocess.CalledProcessError:
-        print("pip not found in venv, bootstrapping via ensurepip ...")
-        run(str(venv_python), "-m", "ensurepip", "--upgrade")
+    pip_ok = subprocess.run(
+        [str(venv_python), "-m", "pip", "--version"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    ).returncode == 0
+
+    if not pip_ok:
+        ensurepip_ok = subprocess.run(
+            [str(venv_python), "-m", "ensurepip", "--upgrade"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        ).returncode == 0
+
+        if not ensurepip_ok:
+            import shutil
+            print(
+                "\nERROR: pip and ensurepip are both missing from this Python install.\n"
+                "This is common on Debian/Ubuntu. Fix it by running:\n\n"
+                "    sudo apt install python3-full\n\n"
+                f"Then delete the broken venv and re-run this script:\n\n"
+                f"    rm -rf {VENV_DIR}\n"
+                f"    python3 setup.py\n"
+            )
+            sys.exit(1)
 
     # ── Install / upgrade requirements ───────────────────────────────────
     print(f"Installing dependencies from {REQUIREMENTS.name} ...")
