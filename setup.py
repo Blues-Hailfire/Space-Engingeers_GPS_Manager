@@ -35,15 +35,22 @@ def main():
     # Resolve the pip/python inside the venv
     if sys.platform == "win32":
         venv_python = VENV_DIR / "Scripts" / "python.exe"
-        venv_pip    = VENV_DIR / "Scripts" / "pip.exe"
     else:
         venv_python = VENV_DIR / "bin" / "python"
-        venv_pip    = VENV_DIR / "bin" / "pip"
+
+    # ── Ensure pip is available inside the venv ───────────────────────────
+    # On some Linux distros the venv is created without pip; bootstrap it.
+    try:
+        run(str(venv_python), "-m", "pip", "--version",
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError:
+        print("pip not found in venv, bootstrapping via ensurepip ...")
+        run(str(venv_python), "-m", "ensurepip", "--upgrade")
 
     # ── Install / upgrade requirements ───────────────────────────────────
     print(f"Installing dependencies from {REQUIREMENTS.name} ...")
     try:
-        run(str(venv_pip), "install", "--upgrade", "-r", str(REQUIREMENTS))
+        run(str(venv_python), "-m", "pip", "install", "--upgrade", "-r", str(REQUIREMENTS))
     except subprocess.CalledProcessError as e:
         sys.exit(f"pip install failed (exit code {e.returncode})")
 
