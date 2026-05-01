@@ -1,13 +1,21 @@
 """Setup script: installs dependencies for the Space Engineers GPS Manager bot.
 
+Creates a virtual environment (.venv/) and installs requirements into it.
+
 Usage:
-    python setup.py
+    python3 setup.py
 """
 import subprocess
 import sys
 from pathlib import Path
 
-REQUIREMENTS = Path(__file__).parent / "requirements.txt"
+ROOT         = Path(__file__).parent
+REQUIREMENTS = ROOT / "requirements.txt"
+VENV_DIR     = ROOT / ".venv"
+
+
+def run(*cmd, **kwargs):
+    subprocess.check_call(list(cmd), **kwargs)
 
 
 def main():
@@ -17,21 +25,41 @@ def main():
     if not REQUIREMENTS.exists():
         sys.exit(f"Could not find {REQUIREMENTS}")
 
-    print(f"Installing dependencies from {REQUIREMENTS.name}...")
+    # ── Create venv if it doesn't exist ──────────────────────────────────
+    if not VENV_DIR.exists():
+        print(f"Creating virtual environment at {VENV_DIR} ...")
+        run(sys.executable, "-m", "venv", str(VENV_DIR))
+    else:
+        print(f"Virtual environment already exists at {VENV_DIR}")
+
+    # Resolve the pip/python inside the venv
+    if sys.platform == "win32":
+        venv_python = VENV_DIR / "Scripts" / "python.exe"
+        venv_pip    = VENV_DIR / "Scripts" / "pip.exe"
+    else:
+        venv_python = VENV_DIR / "bin" / "python"
+        venv_pip    = VENV_DIR / "bin" / "pip"
+
+    # ── Install / upgrade requirements ───────────────────────────────────
+    print(f"Installing dependencies from {REQUIREMENTS.name} ...")
     try:
-        subprocess.check_call([
-            sys.executable, "-m", "pip", "install",
-            "--upgrade", "-r", str(REQUIREMENTS),
-        ])
+        run(str(venv_pip), "install", "--upgrade", "-r", str(REQUIREMENTS))
     except subprocess.CalledProcessError as e:
         sys.exit(f"pip install failed (exit code {e.returncode})")
 
-    token_file = Path(__file__).parent / "DiscordToken.txt"
+    # ── Token reminder ────────────────────────────────────────────────────
+    token_file = ROOT / "DiscordToken.txt"
     if not token_file.exists():
         print(f"\nNote: {token_file.name} not found. "
-              "Create it and paste your Discord bot token before running VectorHandler.py.")
+              "Create it and paste your Discord bot token before running the bot.")
 
-    print("\nSetup complete. Run the bot with: python VectorHandler.py")
+    # ── Done ──────────────────────────────────────────────────────────────
+    print("\nSetup complete.")
+    if sys.platform == "win32":
+        print(f"Run the bot with:  {venv_python} VectorHandler.py")
+    else:
+        print(f"Run the bot with:  {venv_python} VectorHandler.py")
+        print(f"  or activate first:  source {VENV_DIR}/bin/activate")
 
 
 if __name__ == "__main__":
