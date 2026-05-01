@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>GPS Console — {{TITLE}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cyan:   #00f5ff;
+    --green:  #00ff9d;
+    --amber:  #ffb800;
+    --red:    #ff3860;
+    --purple: #cb75f1;
+    --bg:     #020810;
+    --panel:  #040d1a;
+    --border: rgba(0, 245, 255, 0.18);
+    --glow:   0 0 8px rgba(0,245,255,0.4), 0 0 20px rgba(0,245,255,0.12);
+    --sidebar-w: 320px;
+    --mono: 'Share Tech Mono', monospace;
+    --head: 'Orbitron', monospace;
+  }
+
+  html, body {
+    height: 100%; width: 100%;
+    background: var(--bg);
+    color: var(--cyan);
+    font-family: var(--mono);
+    overflow: hidden;
+  }
+
+  /* ── LAYOUT ─────────────────────────────────────────────── */
+  #app {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+  }
+
+  /* ── SIDEBAR ─────────────────────────────────────────────── */
+  #sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    height: 100%;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 10;
+    box-shadow: 4px 0 30px rgba(0,245,255,0.06);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  #sidebar.collapsed {
+    transform: translateX(calc(-1 * var(--sidebar-w)));
+  }
+
+  /* Sidebar toggle tab */
+  #sidebar-toggle {
+    position: absolute;
+    right: -32px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 64px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--cyan);
+    font-size: 12px;
+    z-index: 11;
+    clip-path: polygon(0 8px, 100% 0, 100% 100%, 0 calc(100% - 8px));
+    transition: background 0.2s;
+  }
+  #sidebar-toggle:hover { background: rgba(0,245,255,0.08); }
+
+  /* Sidebar header */
+  #sidebar-header {
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .sys-label {
+    font-family: var(--head);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: rgba(0,245,255,0.45);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .sys-title {
+    font-family: var(--head);
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--cyan);
+    letter-spacing: 0.12em;
+    text-shadow: var(--glow);
+  }
+
+  .sys-sub {
+    font-size: 11px;
+    color: rgba(0,245,255,0.4);
+    margin-top: 3px;
+    letter-spacing: 0.05em;
+  }
+
+  /* Search bar */
+  #search-wrap {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  #search-icon {
+    position: absolute;
+    left: 22px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(0,245,255,0.4);
+    font-size: 13px;
+    pointer-events: none;
+    font-family: var(--mono);
+  }
+
+  #search-input {
+    width: 100%;
+    background: rgba(0,245,255,0.04);
+    border: 1px solid var(--border);
+    color: var(--cyan);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 7px 10px 7px 28px;
+    outline: none;
+    letter-spacing: 0.05em;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  #search-input::placeholder { color: rgba(0,245,255,0.25); }
+  #search-input:focus {
+    border-color: rgba(0,245,255,0.5);
+    box-shadow: 0 0 12px rgba(0,245,255,0.1);
+  }
+
+  #search-clear {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: rgba(0,245,255,0.4);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 14px;
+    display: none;
+    line-height: 1;
+    padding: 2px 4px;
+  }
+  #search-clear:hover { color: var(--cyan); }
+
+  /* Filter bar */
+  #filter-bar {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+
+  .filter-btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    background: none;
+    border: 1px solid var(--border);
+    color: rgba(0,245,255,0.5);
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { border-color: rgba(0,245,255,0.5); color: var(--cyan); }
+  .filter-btn.active {
+    background: rgba(0,245,255,0.1);
+    border-color: var(--cyan);
+    color: var(--cyan);
+    box-shadow: 0 0 8px rgba(0,245,255,0.15);
+  }
+  .filter-btn.danger.active {
+    background: rgba(255,56,96,0.12);
+    border-color: var(--red);
+    color: var(--red);
+    box-shadow: 0 0 8px rgba(255,56,96,0.2);
+  }
+
+  /* Bulk actions */
+  #bulk-bar {
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .bulk-label {
+    font-size: 10px;
+    color: rgba(0,245,255,0.4);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    flex: 1;
+  }
+
+  .bulk-btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    background: none;
+    border: 1px solid var(--border);
+    color: rgba(0,245,255,0.5);
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: all 0.15s;
+  }
+  .bulk-btn:hover { border-color: rgba(0,245,255,0.5); color: var(--cyan); }
+
+  /* Point list */
+  #point-list {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,245,255,0.2) transparent;
+  }
+  #point-list::-webkit-scrollbar { width: 4px; }
+  #point-list::-webkit-scrollbar-track { background: transparent; }
+  #point-list::-webkit-scrollbar-thumb { background: rgba(0,245,255,0.2); border-radius: 2px; }
+
+  .point-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(0,245,255,0.06);
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+  }
+  .point-item:hover { background: rgba(0,245,255,0.05); }
+  .point-item.active { background: rgba(0,245,255,0.08); }
+  .point-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--cyan);
+    box-shadow: 0 0 6px var(--cyan);
+  }
+  .point-item.hidden-pt { opacity: 0.4; }
+  .point-item.no-match { display: none; }
+
+  .pt-color {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px currentColor;
+  }
+
+  .pt-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .pt-name {
+    font-size: 11px;
+    color: var(--cyan);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pt-coords {
+    font-size: 9px;
+    color: rgba(0,245,255,0.35);
+    margin-top: 2px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pt-tag {
+    font-size: 8px;
+    padding: 1px 5px;
+    border: 1px solid;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  /* Toggle eye button */
+  .pt-vis {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: rgba(0,245,255,0.4);
+    font-size: 14px;
+    line-height: 1;
+    flex-shrink: 0;
+    padding: 2px;
+    transition: color 0.15s;
+    font-family: var(--mono);
+  }
+  .pt-vis:hover { color: var(--cyan); }
+  .pt-vis.hidden { color: rgba(0,245,255,0.15); }
+
+  /* Focus button */
+  .pt-focus {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: rgba(0,245,255,0.3);
+    font-size: 11px;
+    line-height: 1;
+    flex-shrink: 0;
+    padding: 2px;
+    transition: color 0.15s;
+    font-family: var(--mono);
+    letter-spacing: -1px;
+  }
+  .pt-focus:hover { color: var(--amber); }
+
+  /* Status bar */
+  #status-bar {
+    padding: 8px 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    font-size: 9px;
+    color: rgba(0,245,255,0.4);
+    letter-spacing: 0.1em;
+    flex-shrink: 0;
+    background: rgba(0,245,255,0.02);
+  }
+
+  .stat-item { display: flex; flex-direction: column; gap: 2px; }
+  .stat-label { color: rgba(0,245,255,0.25); }
+  .stat-val { color: var(--cyan); }
+
+  /* ── VIEWPORT ─────────────────────────────────────────────── */
+  #viewport {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── HUD OVERLAYS ─────────────────────────────────────────── */
+  #hud-tl {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .hud-block {
+    font-size: 10px;
+    color: rgba(0,245,255,0.5);
+    letter-spacing: 0.1em;
+    line-height: 1.7;
+  }
+
+  .hud-title {
+    font-family: var(--head);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cyan);
+    letter-spacing: 0.15em;
+    text-shadow: var(--glow);
+    margin-bottom: 2px;
+  }
+
+  #hud-tr {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    pointer-events: none;
+    z-index: 5;
+    text-align: right;
+  }
+
+  #hud-br {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    pointer-events: none;
+    z-index: 5;
+    text-align: right;
+    font-size: 10px;
+    color: rgba(0,245,255,0.3);
+    letter-spacing: 0.08em;
+    line-height: 1.8;
+  }
+
+  /* Corner decorations */
+  .corner {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .corner svg { width: 100%; height: 100%; }
+  .corner-tl { top: 6px; left: 6px; }
+  .corner-tr { top: 6px; right: 6px; transform: scaleX(-1); }
+  .corner-bl { bottom: 6px; left: 6px; transform: scaleY(-1); }
+  .corner-br { bottom: 6px; right: 6px; transform: scale(-1,-1); }
+
+  /* Scanlines */
+  #scanlines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 2px,
+      rgba(0, 0, 0, 0.15) 2px,
+      rgba(0, 0, 0, 0.15) 4px
+    );
+    opacity: 0.5;
+  }
+
+  /* Vignette */
+  #vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.7) 100%);
+  }
+
+  /* Tooltip */
+  #tooltip {
+    position: fixed;
+    pointer-events: none;
+    padding: 8px 12px;
+    background: rgba(2, 8, 16, 0.95);
+    border: 1px solid var(--cyan);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--cyan);
+    display: none;
+    white-space: pre;
+    z-index: 20;
+    line-height: 1.6;
+    letter-spacing: 0.05em;
+    box-shadow: 0 0 20px rgba(0,245,255,0.15);
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+
+  .tt-name { color: var(--cyan); font-weight: bold; margin-bottom: 2px; }
+  .tt-coord { color: rgba(0,245,255,0.6); font-size: 10px; }
+  .tt-tag { color: var(--amber); font-size: 9px; letter-spacing: 0.15em; margin-top: 3px; }
+
+  /* ── FOCUS RING ──────────────────────────────────────────── */
+  #focus-ring {
+    position: absolute;
+    pointer-events: none;
+    z-index: 6;
+    display: none;
+    width: 32px;
+    height: 32px;
+    margin-left: -16px;
+    margin-top: -16px;
+    border: 1px solid var(--amber);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--amber), inset 0 0 8px rgba(255,184,0,0.1);
+    animation: pulse-ring 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse-ring {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.25); opacity: 0.6; }
+  }
+
+  /* ── SELECTED DETAIL PANEL ─────────────────────────────── */
+  #detail-panel {
+    position: absolute;
+    bottom: 14px;
+    left: 14px;
+    background: rgba(4, 13, 26, 0.92);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    font-size: 10px;
+    z-index: 8;
+    display: none;
+    min-width: 220px;
+    backdrop-filter: blur(4px);
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+
+  .detail-head {
+    font-family: var(--head);
+    font-size: 11px;
+    color: var(--amber);
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+    text-shadow: 0 0 8px rgba(255,184,0,0.4);
+  }
+  .detail-row {
+    display: flex;
+    gap: 8px;
+    line-height: 1.8;
+    color: rgba(0,245,255,0.6);
+  }
+  .detail-key { color: rgba(0,245,255,0.35); width: 24px; }
+  .detail-val { color: var(--cyan); }
+
+  /* ── CLOCK ───────────────────────────────────────────────── */
+  #clock {
+    font-family: var(--head);
+    font-size: 11px;
+    color: rgba(0,245,255,0.5);
+    letter-spacing: 0.12em;
+  }
+
+  /* ── NO RESULTS ──────────────────────────────────────────── */
+  #no-results {
+    display: none;
+    padding: 24px 12px;
+    text-align: center;
+    color: rgba(0,245,255,0.25);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    line-height: 2;
+  }
+
+  /* ── SCROLLBAR canvas placeholder ──────────────────────── */
+  canvas { display: block; }
+
+  /* Blinking cursor */
+  @keyframes blink { 0%,49% {opacity:1} 50%,100% {opacity:0} }
+  .blink { animation: blink 1s step-start infinite; }
+
+  /* ── MEASURE MODE BUTTON ─────────────────────────────────── */
+  #measure-btn {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    font-family: var(--head);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    padding: 8px 14px;
+    background: rgba(4,13,26,0.85);
+    border: 1px solid var(--border);
+    color: rgba(0,245,255,0.55);
+    cursor: pointer;
+    pointer-events: all;
+    transition: all 0.2s;
+    writing-mode: vertical-rl;
+    clip-path: none;
+  }
+  #measure-btn:hover { border-color: var(--amber); color: var(--amber); }
+  #measure-btn.active {
+    background: rgba(255,184,0,0.1);
+    border-color: var(--amber);
+    color: var(--amber);
+    box-shadow: 0 0 14px rgba(255,184,0,0.25);
+  }
+
+  /* ── DISTANCE PANEL ──────────────────────────────────────── */
+  #dist-panel {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9;
+    background: rgba(4,13,26,0.95);
+    border: 1px solid var(--amber);
+    padding: 12px 18px;
+    min-width: 340px;
+    display: none;
+    backdrop-filter: blur(6px);
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+    box-shadow: 0 0 24px rgba(255,184,0,0.12);
+    margin-right: 120px;
+  }
+  #dist-panel.visible { display: block; }
+
+  .dist-head {
+    font-family: var(--head);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: rgba(255,184,0,0.5);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .dist-slots {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .dist-slot {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    background: rgba(0,245,255,0.03);
+    font-size: 10px;
+  }
+  .dist-slot.picked {
+    border-color: var(--amber);
+    background: rgba(255,184,0,0.06);
+  }
+  .dist-slot-label {
+    font-size: 8px;
+    color: rgba(255,184,0,0.5);
+    letter-spacing: 0.15em;
+    margin-bottom: 3px;
+  }
+  .dist-slot-name {
+    color: var(--cyan);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dist-slot-name.empty { color: rgba(0,245,255,0.2); font-style: italic; }
+
+  /* Graphic bar */
+  #dist-graphic {
+    height: 28px;
+    position: relative;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+  .dist-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 6px var(--amber);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .dist-line-wrap {
+    flex: 1;
+    height: 2px;
+    background: rgba(255,184,0,0.15);
+    position: relative;
+    overflow: visible;
+  }
+  .dist-line-fill {
+    position: absolute;
+    left: 0; top: 0;
+    height: 2px;
+    background: var(--amber);
+    box-shadow: 0 0 6px var(--amber);
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+  .dist-tick {
+    position: absolute;
+    top: -4px;
+    width: 1px;
+    height: 10px;
+    background: rgba(255,184,0,0.4);
+  }
+  .dist-midlabel {
+    position: absolute;
+    top: -18px;
+    transform: translateX(-50%);
+    font-size: 9px;
+    color: var(--amber);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    font-family: var(--mono);
+  }
+
+  .dist-numbers {
+    display: flex;
+    gap: 16px;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+    margin-top: 4px;
+  }
+  .dist-num-item { flex: 1; }
+  .dist-num-label {
+    font-size: 8px;
+    color: rgba(255,184,0,0.45);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .dist-num-val {
+    font-family: var(--head);
+    font-size: 13px;
+    color: var(--amber);
+    letter-spacing: 0.05em;
+    text-shadow: 0 0 8px rgba(255,184,0,0.4);
+  }
+  .dist-num-unit {
+    font-size: 9px;
+    color: rgba(255,184,0,0.5);
+    margin-left: 3px;
+  }
+
+  #dist-clear {
+    position: absolute;
+    top: 8px; right: 10px;
+    background: none;
+    border: none;
+    color: rgba(255,184,0,0.4);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1;
+    padding: 2px 4px;
+    transition: color 0.15s;
+  }
+  #dist-clear:hover { color: var(--amber); }
+
+  /* measure mode cursor hint */
+  #viewport.measure-mode { cursor: crosshair !important; }
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <div class="sys-label">Spatial Surveillance System</div>
+      <div class="sys-title">GPS<span style="color:rgba(0,245,255,0.4)">▸</span>VAULT</div>
+      <div class="sys-sub">{{TITLE}} &nbsp;·&nbsp; <span id="hdr-count">{{POINT_COUNT}}</span> STATIONS INDEXED</div>
+    </div>
+
+    <div id="search-wrap">
+      <span id="search-icon">⌕</span>
+      <input id="search-input" type="text" placeholder="SEARCH STATIONS..." autocomplete="off" spellcheck="false" />
+      <button id="search-clear">×</button>
+    </div>
+
+    <div id="filter-bar">
+      <button class="filter-btn active" data-filter="all">ALL</button>
+      <!-- dynamic tag filters injected here by JS -->
+      <button class="filter-btn danger" data-filter="hidden">HIDDEN</button>
+    </div>
+
+    <div id="bulk-bar">
+      <span class="bulk-label">BATCH &nbsp;<span class="blink">_</span></span>
+      <button class="bulk-btn" id="btn-show-all">SHOW ALL</button>
+      <button class="bulk-btn" id="btn-hide-all">HIDE ALL</button>
+      <button class="bulk-btn" id="btn-hide-filtered">HIDE VIS</button>
+    </div>
+
+    <div id="point-list"></div>
+
+    <div id="no-results">NO STATIONS MATCH<br>QUERY PARAMETERS</div>
+
+    <div id="status-bar">
+      <div class="stat-item">
+        <span class="stat-label">VISIBLE</span>
+        <span class="stat-val" id="stat-vis">{{POINT_COUNT}}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">HIDDEN</span>
+        <span class="stat-val" id="stat-hid">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">MATCHES</span>
+        <span class="stat-val" id="stat-match">{{POINT_COUNT}}</span>
+      </div>
+      <div class="stat-item" style="margin-left:auto">
+        <span class="stat-label">SYS</span>
+        <span class="stat-val" style="color:var(--green)">ONLINE</span>
+      </div>
+    </div>
+
+    <button id="sidebar-toggle" title="Toggle sidebar">◀</button>
+  </div>
+
+  <!-- VIEWPORT -->
+  <div id="viewport">
+    <!-- Overlays -->
+    <div id="scanlines"></div>
+    <div id="vignette"></div>
+
+    <!-- Corners -->
+    <div class="corner corner-tl"><svg viewBox="0 0 18 18"><path d="M0 18 L0 0 L18 0" fill="none" stroke="rgba(0,245,255,0.4)" stroke-width="1.5"/></svg></div>
+    <div class="corner corner-tr"><svg viewBox="0 0 18 18"><path d="M0 18 L0 0 L18 0" fill="none" stroke="rgba(0,245,255,0.4)" stroke-width="1.5"/></svg></div>
+    <div class="corner corner-bl"><svg viewBox="0 0 18 18"><path d="M0 18 L0 0 L18 0" fill="none" stroke="rgba(0,245,255,0.4)" stroke-width="1.5"/></svg></div>
+    <div class="corner corner-br"><svg viewBox="0 0 18 18"><path d="M0 18 L0 0 L18 0" fill="none" stroke="rgba(0,245,255,0.4)" stroke-width="1.5"/></svg></div>
+
+    <!-- HUD top-left -->
+    <div id="hud-tl">
+      <div class="hud-title">Helicon: Classified</div>
+      <div class="hud-block">
+        LEFT-DRAG &nbsp;ROTATE &nbsp;·&nbsp; RIGHT-DRAG &nbsp;PAN &nbsp;·&nbsp; WHEEL &nbsp;ZOOM
+      </div>
+    </div>
+
+    <!-- HUD top-right -->
+    <div id="hud-tr">
+      <div id="clock" style="text-align:right"></div>
+      <div class="hud-block" style="text-align:right;margin-top:4px">
+        COORD SYS: ECEF<br>
+        DATUM: WGS-84
+      </div>
+    </div>
+
+    <!-- HUD bottom-right -->
+    <div id="hud-br">
+      ACTIVE STATION: <span id="hud-active" style="color:var(--amber)">—</span><br>
+      RENDER: <span style="color:var(--green)">THREE.JS</span>
+    </div>
+
+    <!-- Measure button -->
+    <button id="measure-btn" title="Measure distance between two points">⟷ MEASURE</button>
+
+    <!-- Distance panel -->
+    <div id="dist-panel">
+      <div class="dist-head">▸ DISTANCE MEASUREMENT</div>
+      <button id="dist-clear">×</button>
+      <div class="dist-slots">
+        <div class="dist-slot" id="dist-slot-a">
+          <div class="dist-slot-label">POINT A</div>
+          <div class="dist-slot-name empty" id="dist-name-a">— select station —</div>
+        </div>
+        <div class="dist-slot" id="dist-slot-b">
+          <div class="dist-slot-label">POINT B</div>
+          <div class="dist-slot-name empty" id="dist-name-b">— select station —</div>
+        </div>
+      </div>
+      <div id="dist-graphic">
+        <div class="dist-dot" id="dist-dot-a"></div>
+        <div class="dist-line-wrap" id="dist-line-wrap">
+          <div class="dist-line-fill" id="dist-line-fill"></div>
+        </div>
+        <div class="dist-dot" id="dist-dot-b" style="opacity:0.3"></div>
+      </div>
+      <div class="dist-numbers">
+        <div class="dist-num-item">
+          <div class="dist-num-label">DISTANCE</div>
+          <div class="dist-num-val" id="dist-val">—<span class="dist-num-unit"></span></div>
+        </div>
+        <div class="dist-num-item">
+          <div class="dist-num-label">ΔX</div>
+          <div class="dist-num-val" id="dist-dx" style="font-size:11px">—</div>
+        </div>
+        <div class="dist-num-item">
+          <div class="dist-num-label">ΔY</div>
+          <div class="dist-num-val" id="dist-dy" style="font-size:11px">—</div>
+        </div>
+        <div class="dist-num-item">
+          <div class="dist-num-label">ΔZ</div>
+          <div class="dist-num-val" id="dist-dz" style="font-size:11px">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Focus ring -->
+    <div id="focus-ring"></div>
+
+    <!-- Tooltip -->
+    <div id="tooltip"></div>
+
+    <!-- Selected detail -->
+    <div id="detail-panel">
+      <div class="detail-head" id="detail-name">—</div>
+      <div class="detail-row"><span class="detail-key">X</span><span class="detail-val" id="detail-x">—</span></div>
+      <div class="detail-row"><span class="detail-key">Y</span><span class="detail-val" id="detail-y">—</span></div>
+      <div class="detail-row"><span class="detail-key">Z</span><span class="detail-val" id="detail-z">—</span></div>
+      <div class="detail-row" style="margin-top:4px"><span class="detail-key" style="color:var(--amber)">TAG</span><span class="detail-val" style="color:var(--amber)" id="detail-tag">—</span></div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── DATA ──────────────────────────────────────────────────────────────────
+const POINTS = {{POINTS_JSON}};
+
+// ── TAG EXTRACTION ────────────────────────────────────────────────────────
+// Known suffix tags (network/group identifiers) — edit to match your server
+const SUFFIX_TAGS = ['TCFT','IDMG','RODE'];
+// Known station type prefixes — edit to match your naming conventions
+const TYPE_KEYWORDS = [
+  { key: 'BASE',    terms: ['base'] },
+  { key: 'HQ',      terms: ['hq'] },
+  { key: 'OUTPOST', terms: ['outpost'] },
+  { key: 'STATION', terms: ['station'] },
+  { key: 'TRADE',   terms: ['trade station', 'trade'] },
+  { key: 'AST',     terms: ['asteroid', 'ast'] },
+  { key: 'PLANET',  terms: ['planet'] },
+  { key: 'MOON',    terms: ['moon'] },
+];
+
+function extractTag(name) {
+  for (const t of SUFFIX_TAGS) if (name.toUpperCase().includes(t)) return t;
+  return null;
+}
+
+function extractType(name) {
+  const lower = name.toLowerCase();
+  for (const { key, terms } of TYPE_KEYWORDS) {
+    if (terms.some(t => lower.includes(t))) return key;
+  }
+  return null;
+}
+
+const pointData = POINTS.map((p, i) => ({
+  ...p,
+  tag: extractTag(p.name),
+  type: extractType(p.name),
+  hidden: false,
+  id: i,
+}));
+
+// ── SCENE SETUP ──────────────────────────────────────────────────────────
+const viewport = document.getElementById('viewport');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x020810);
+
+// Subtle star field
+const starGeom = new THREE.BufferGeometry();
+const starCount = 1200;
+const starPos = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount * 3; i++) starPos[i] = (Math.random() - 0.5) * 2e9;
+starGeom.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const starMat = new THREE.PointsMaterial({ color: 0x334466, size: 8000, sizeAttenuation: true });
+scene.add(new THREE.Points(starGeom, starMat));
+
+const camera = new THREE.PerspectiveCamera(60, viewport.clientWidth / viewport.clientHeight, 0.1, 1e12);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+viewport.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+
+let cx = 0, cy = 0, cz = 0;
+if (POINTS.length) {
+  const xs = POINTS.map(p => p.x), ys = POINTS.map(p => p.y), zs = POINTS.map(p => p.z);
+  cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+  cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  cz = (Math.min(...zs) + Math.max(...zs)) / 2;
+}
+const span = Math.max(1, ...POINTS.map(p => Math.hypot(p.x - cx, p.y - cy, p.z - cz)));
+
+camera.position.set(cx + span * 1.5, cy + span * 1.5, cz + span * 1.5);
+controls.target.set(cx, cy, cz);
+controls.update();
+
+const pointSize = Math.max(span * 0.012, 1);
+
+// ── IMPROVED AXES ─────────────────────────────────────────────────────────
+const axisLen = span * 1.4;
+const AXIS_DEFS = [
+  { color: 0xff4444, dimColor: 0xff4444, dir: [1,0,0], label: 'X', neg: [-1,0,0] },
+  { color: 0x44ff88, dimColor: 0x44ff88, dir: [0,1,0], label: 'Y', neg: [0,-1,0] },
+  { color: 0x4488ff, dimColor: 0x4488ff, dir: [0,0,1], label: 'Z', neg: [0,0,-1] },
+];
+
+for (const ax of AXIS_DEFS) {
+  const posMat = new THREE.LineBasicMaterial({ color: ax.color, transparent: true, opacity: 0.9 });
+  const posGeom = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(cx, cy, cz),
+    new THREE.Vector3(cx + ax.dir[0]*axisLen, cy + ax.dir[1]*axisLen, cz + ax.dir[2]*axisLen),
+  ]);
+  scene.add(new THREE.Line(posGeom, posMat));
+
+  const negMat = new THREE.LineBasicMaterial({ color: ax.dimColor, transparent: true, opacity: 0.25 });
+  const SEGS = 12;
+  const negPts = [];
+  for (let s = 0; s < SEGS; s++) {
+    if (s % 2 === 1) continue;
+    const t0 = s / SEGS, t1 = (s + 0.6) / SEGS;
+    negPts.push(
+      new THREE.Vector3(cx + ax.neg[0]*axisLen*t0, cy + ax.neg[1]*axisLen*t0, cz + ax.neg[2]*axisLen*t0),
+      new THREE.Vector3(cx + ax.neg[0]*axisLen*t1, cy + ax.neg[1]*axisLen*t1, cz + ax.neg[2]*axisLen*t1),
+    );
+  }
+  const negGeom = new THREE.BufferGeometry().setFromPoints(negPts);
+  scene.add(new THREE.LineSegments(negGeom, negMat));
+
+  const TICKS = 5;
+  const tickPts = [];
+  const perp = ax.label === 'X' ? [0,1,0] : ax.label === 'Y' ? [1,0,0] : [1,0,0];
+  const tickLen = axisLen * 0.025;
+  for (let t = 1; t <= TICKS; t++) {
+    const f = t / TICKS;
+    const bx = cx + ax.dir[0]*axisLen*f, by = cy + ax.dir[1]*axisLen*f, bz = cz + ax.dir[2]*axisLen*f;
+    tickPts.push(
+      new THREE.Vector3(bx - perp[0]*tickLen, by - perp[1]*tickLen, bz - perp[2]*tickLen),
+      new THREE.Vector3(bx + perp[0]*tickLen, by + perp[1]*tickLen, bz + perp[2]*tickLen),
+    );
+  }
+  const tickMat = new THREE.LineBasicMaterial({ color: ax.color, transparent: true, opacity: 0.55 });
+  const tickGeom = new THREE.BufferGeometry().setFromPoints(tickPts);
+  scene.add(new THREE.LineSegments(tickGeom, tickMat));
+
+  const coneH = axisLen * 0.04;
+  const coneR = axisLen * 0.008;
+  const coneGeom = new THREE.ConeGeometry(coneR, coneH, 8);
+  const coneMat = new THREE.MeshBasicMaterial({ color: ax.color, transparent: true, opacity: 0.85 });
+  const cone = new THREE.Mesh(coneGeom, coneMat);
+  const tip = new THREE.Vector3(cx + ax.dir[0]*axisLen, cy + ax.dir[1]*axisLen, cz + ax.dir[2]*axisLen);
+  cone.position.copy(tip);
+  if (ax.label === 'X') cone.rotation.z = -Math.PI / 2;
+  else if (ax.label === 'Z') cone.rotation.x = Math.PI / 2;
+  scene.add(cone);
+
+  const labelCanvas = document.createElement('canvas');
+  labelCanvas.width = 64; labelCanvas.height = 64;
+  const lCtx = labelCanvas.getContext('2d');
+  lCtx.clearRect(0,0,64,64);
+  lCtx.font = 'bold 36px monospace';
+  lCtx.fillStyle = `#${ax.color.toString(16).padStart(6,'0')}`;
+  lCtx.textAlign = 'center';
+  lCtx.textBaseline = 'middle';
+  lCtx.fillText(ax.label, 32, 32);
+  const labelTex = new THREE.CanvasTexture(labelCanvas);
+  const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, opacity: 0.9, depthWrite: false });
+  const labelSprite = new THREE.Sprite(labelMat);
+  const labelPos = new THREE.Vector3(
+    cx + ax.dir[0]*(axisLen + coneH*2),
+    cy + ax.dir[1]*(axisLen + coneH*2),
+    cz + ax.dir[2]*(axisLen + coneH*2),
+  );
+  labelSprite.position.copy(labelPos);
+  labelSprite.scale.set(axisLen * 0.08, axisLen * 0.08, 1);
+  scene.add(labelSprite);
+}
+
+const originGeom = new THREE.SphereGeometry(pointSize * 0.5, 8, 6);
+const originMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 });
+const originMesh = new THREE.Mesh(originGeom, originMat);
+originMesh.position.set(cx, cy, cz);
+scene.add(originMesh);
+
+// ── GPS POINTS ────────────────────────────────────────────────────────────
+const sphereGeom = new THREE.SphereGeometry(pointSize, 14, 10);
+
+const glowCanvas = document.createElement('canvas');
+glowCanvas.width = glowCanvas.height = 64;
+const gCtx = glowCanvas.getContext('2d');
+const grad = gCtx.createRadialGradient(32,32,0,32,32,32);
+grad.addColorStop(0, 'rgba(255,255,255,1)');
+grad.addColorStop(0.3, 'rgba(255,255,255,0.4)');
+grad.addColorStop(1, 'rgba(255,255,255,0)');
+gCtx.fillStyle = grad;
+gCtx.fillRect(0,0,64,64);
+const glowTex = new THREE.CanvasTexture(glowCanvas);
+
+const meshes = [];
+const glows = [];
+
+for (const p of pointData) {
+  const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(p.color) });
+  const m = new THREE.Mesh(sphereGeom, mat);
+  m.position.set(p.x, p.y, p.z);
+  m.userData = p;
+  scene.add(m);
+  meshes.push(m);
+
+  const glowMat = new THREE.SpriteMaterial({
+    map: glowTex,
+    color: new THREE.Color(p.color),
+    transparent: true,
+    opacity: 0.35,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const sprite = new THREE.Sprite(glowMat);
+  sprite.position.set(p.x, p.y, p.z);
+  sprite.scale.set(pointSize * 8, pointSize * 8, 1);
+  scene.add(sprite);
+  glows.push(sprite);
+}
+
+// ── UI STATE ─────────────────────────────────────────────────────────────
+let activeIdx = null;
+let currentFilter = 'all';
+let searchQuery = '';
+
+function updateVisibility() {
+  let vis = 0, hid = 0, match = 0;
+
+  for (let i = 0; i < pointData.length; i++) {
+    const p = pointData[i];
+
+    const searchMatch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
+
+    let filterMatch = true;
+    if (currentFilter === 'hidden') filterMatch = p.hidden;
+    else if (currentFilter.startsWith('type:')) filterMatch = p.type === currentFilter.slice(5);
+    else if (currentFilter.startsWith('tag:')) filterMatch = p.tag === currentFilter.slice(4);
+    else if (currentFilter !== 'all') filterMatch = p.tag === currentFilter;
+
+    const listMatch = searchMatch && filterMatch;
+
+    const item = document.querySelector(`.point-item[data-idx="${i}"]`);
+    if (item) {
+      item.classList.toggle('no-match', !listMatch);
+      item.classList.toggle('hidden-pt', p.hidden);
+    }
+
+    meshes[i].visible = !p.hidden;
+    glows[i].visible = !p.hidden;
+
+    if (!p.hidden) vis++; else hid++;
+    if (listMatch) match++;
+  }
+
+  document.getElementById('stat-vis').textContent = vis;
+  document.getElementById('stat-hid').textContent = hid;
+  document.getElementById('stat-match').textContent = match;
+
+  const noRes = document.getElementById('no-results');
+  const hasVisible = [...document.querySelectorAll('.point-item')].some(el => !el.classList.contains('no-match'));
+  noRes.style.display = hasVisible ? 'none' : 'block';
+}
+
+// ── BUILD LIST ────────────────────────────────────────────────────────────
+const listEl = document.getElementById('point-list');
+
+for (let i = 0; i < pointData.length; i++) {
+  const p = pointData[i];
+  const item = document.createElement('div');
+  item.className = 'point-item';
+  item.dataset.idx = i;
+
+  const dot = document.createElement('div');
+  dot.className = 'pt-color';
+  dot.style.background = p.color;
+  dot.style.color = p.color;
+
+  const info = document.createElement('div');
+  info.className = 'pt-info';
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'pt-name';
+  nameEl.textContent = p.name;
+
+  const coordEl = document.createElement('div');
+  coordEl.className = 'pt-coords';
+  coordEl.textContent = `${p.x.toFixed(0)}, ${p.y.toFixed(0)}, ${p.z.toFixed(0)}`;
+
+  info.appendChild(nameEl);
+  info.appendChild(coordEl);
+
+  item.appendChild(dot);
+  item.appendChild(info);
+
+  if (p.tag) {
+    const tagEl = document.createElement('span');
+    tagEl.className = 'pt-tag';
+    tagEl.textContent = p.tag;
+    const tagColors = { TCFT: '#75F1F1', IDMG: '#ffb800', RODE: '#00ff9d' };
+    const c = tagColors[p.tag] || '#CB75F1';
+    tagEl.style.borderColor = c;
+    tagEl.style.color = c;
+    item.appendChild(tagEl);
+  }
+
+  const focusBtn = document.createElement('button');
+  focusBtn.className = 'pt-focus';
+  focusBtn.textContent = '◎';
+  focusBtn.title = 'Focus camera';
+  focusBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    focusPoint(i);
+  });
+  item.appendChild(focusBtn);
+
+  const visBtn = document.createElement('button');
+  visBtn.className = 'pt-vis';
+  visBtn.textContent = '◉';
+  visBtn.title = 'Toggle visibility';
+  visBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    p.hidden = !p.hidden;
+    visBtn.classList.toggle('hidden', p.hidden);
+    visBtn.textContent = p.hidden ? '◌' : '◉';
+    updateVisibility();
+  });
+  item.appendChild(visBtn);
+
+  item.addEventListener('click', () => {
+    if (measureMode) {
+      pickMeasurePoint(i);
+    } else {
+      selectPoint(i);
+    }
+  });
+
+  listEl.appendChild(item);
+}
+
+updateVisibility();
+
+// ── MEASURE MODE ──────────────────────────────────────────────────────────
+let measureMode = false;
+let measurePts = [null, null];
+let measureLine = null;
+let measureMidSprite = null;
+
+const measureBtn = document.getElementById('measure-btn');
+const distPanel  = document.getElementById('dist-panel');
+
+function formatDist(d) {
+  return { val: (d / 1e3).toFixed(3), unit: 'km' };
+}
+
+function updateDistPanel() {
+  const [ai, bi] = measurePts;
+  const slotA = document.getElementById('dist-slot-a');
+  const slotB = document.getElementById('dist-slot-b');
+  const nameA = document.getElementById('dist-name-a');
+  const nameB = document.getElementById('dist-name-b');
+
+  if (ai !== null) {
+    nameA.textContent = pointData[ai].name;
+    nameA.classList.remove('empty');
+    slotA.classList.add('picked');
+    document.getElementById('dist-dot-a').style.opacity = '1';
+  } else {
+    nameA.textContent = '— select station —';
+    nameA.classList.add('empty');
+    slotA.classList.remove('picked');
+  }
+
+  if (bi !== null) {
+    nameB.textContent = pointData[bi].name;
+    nameB.classList.remove('empty');
+    slotB.classList.add('picked');
+    document.getElementById('dist-dot-b').style.opacity = '1';
+  } else {
+    nameB.textContent = '— select station —';
+    nameB.classList.add('empty');
+    slotB.classList.remove('picked');
+    document.getElementById('dist-dot-b').style.opacity = '0.3';
+  }
+
+  if (ai !== null && bi !== null) {
+    const a = pointData[ai], b = pointData[bi];
+    const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+    const dist = Math.hypot(dx, dy, dz);
+    const { val, unit } = formatDist(dist);
+
+    document.getElementById('dist-val').innerHTML =
+      `${val}<span class="dist-num-unit">${unit}</span>`;
+    document.getElementById('dist-dx').textContent = formatDist(Math.abs(dx)).val + ' ' + formatDist(Math.abs(dx)).unit;
+    document.getElementById('dist-dy').textContent = formatDist(Math.abs(dy)).val + ' ' + formatDist(Math.abs(dy)).unit;
+    document.getElementById('dist-dz').textContent = formatDist(Math.abs(dz)).val + ' ' + formatDist(Math.abs(dz)).unit;
+
+    document.getElementById('dist-line-fill').style.width = '100%';
+
+    const wrap = document.getElementById('dist-line-wrap');
+    wrap.querySelectorAll('.dist-midlabel,.dist-tick').forEach(el => el.remove());
+    const midLabel = document.createElement('div');
+    midLabel.className = 'dist-midlabel';
+    midLabel.style.left = '50%';
+    midLabel.textContent = `${val} ${unit}`;
+    wrap.appendChild(midLabel);
+    [0.25, 0.5, 0.75].forEach(f => {
+      const tick = document.createElement('div');
+      tick.className = 'dist-tick';
+      tick.style.left = `${f*100}%`;
+      wrap.appendChild(tick);
+    });
+
+    drawMeasureLine(a, b);
+  } else {
+    document.getElementById('dist-val').innerHTML = '—';
+    document.getElementById('dist-dx').textContent = '—';
+    document.getElementById('dist-dy').textContent = '—';
+    document.getElementById('dist-dz').textContent = '—';
+    document.getElementById('dist-line-fill').style.width = '0%';
+    document.getElementById('dist-line-wrap').querySelectorAll('.dist-midlabel,.dist-tick').forEach(el => el.remove());
+    clearMeasureLine();
+  }
+}
+
+function drawMeasureLine(a, b) {
+  clearMeasureLine();
+  const pts = [
+    new THREE.Vector3(a.x, a.y, a.z),
+    new THREE.Vector3(b.x, b.y, b.z),
+  ];
+  const geom = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat  = new THREE.LineBasicMaterial({ color: 0xffb800, transparent: true, opacity: 0.85, linewidth: 2 });
+  measureLine = new THREE.Line(geom, mat);
+  scene.add(measureLine);
+
+  const midX = (a.x+b.x)/2, midY = (a.y+b.y)/2, midZ = (a.z+b.z)/2;
+  const dist = Math.hypot(b.x-a.x, b.y-a.y, b.z-a.z);
+  const { val, unit } = formatDist(dist);
+  const mc = document.createElement('canvas');
+  mc.width = 256; mc.height = 64;
+  const mCtx = mc.getContext('2d');
+  mCtx.clearRect(0,0,256,64);
+  mCtx.fillStyle = 'rgba(255,184,0,0.12)';
+  mCtx.fillRect(0,0,256,64);
+  mCtx.strokeStyle = 'rgba(255,184,0,0.6)';
+  mCtx.lineWidth = 1.5;
+  mCtx.strokeRect(1,1,254,62);
+  mCtx.font = 'bold 24px monospace';
+  mCtx.fillStyle = '#ffb800';
+  mCtx.textAlign = 'center';
+  mCtx.textBaseline = 'middle';
+  mCtx.fillText(`${val} ${unit}`, 128, 32);
+  const mTex = new THREE.CanvasTexture(mc);
+  const mMat = new THREE.SpriteMaterial({ map: mTex, transparent: true, depthWrite: false });
+  measureMidSprite = new THREE.Sprite(mMat);
+  measureMidSprite.position.set(midX, midY, midZ);
+  measureMidSprite.scale.set(pointSize * 20, pointSize * 5, 1);
+  scene.add(measureMidSprite);
+}
+
+function clearMeasureLine() {
+  if (measureLine) { scene.remove(measureLine); measureLine = null; }
+  if (measureMidSprite) { scene.remove(measureMidSprite); measureMidSprite = null; }
+}
+
+function toggleMeasureMode() {
+  measureMode = !measureMode;
+  measureBtn.classList.toggle('active', measureMode);
+  viewport.classList.toggle('measure-mode', measureMode);
+  distPanel.classList.toggle('visible', measureMode);
+  if (!measureMode) {
+    measurePts = [null, null];
+    updateDistPanel();
+  }
+}
+
+measureBtn.addEventListener('click', toggleMeasureMode);
+
+document.getElementById('dist-clear').addEventListener('click', () => {
+  measurePts = [null, null];
+  updateDistPanel();
+});
+
+function pickMeasurePoint(idx) {
+  if (measurePts[0] === null) {
+    measurePts[0] = idx;
+  } else if (measurePts[1] === null) {
+    if (idx !== measurePts[0]) measurePts[1] = idx;
+  } else {
+    measurePts = [idx, null];
+    clearMeasureLine();
+  }
+  updateDistPanel();
+}
+
+// ── SELECT / FOCUS ────────────────────────────────────────────────────────
+function selectPoint(i) {
+  if (activeIdx !== null) {
+    document.querySelector(`.point-item[data-idx="${activeIdx}"]`)?.classList.remove('active');
+  }
+  activeIdx = i;
+  document.querySelector(`.point-item[data-idx="${i}"]`)?.classList.add('active');
+
+  const p = pointData[i];
+  document.getElementById('hud-active').textContent = p.name;
+
+  const dp = document.getElementById('detail-panel');
+  dp.style.display = 'block';
+  document.getElementById('detail-name').textContent = p.name;
+  document.getElementById('detail-x').textContent = p.x.toFixed(3);
+  document.getElementById('detail-y').textContent = p.y.toFixed(3);
+  document.getElementById('detail-z').textContent = p.z.toFixed(3);
+  document.getElementById('detail-tag').textContent = p.tag || '—';
+}
+
+function focusPoint(i) {
+  selectPoint(i);
+  const p = pointData[i];
+  const target = new THREE.Vector3(p.x, p.y, p.z);
+  const zoomDist = span * 0.6;
+
+  const startPos = camera.position.clone();
+  const startTarget = controls.target.clone();
+  const dir = camera.position.clone().sub(target).normalize();
+  const endPos = target.clone().addScaledVector(dir, zoomDist);
+
+  let t = 0;
+  const dur = 60;
+  function animStep() {
+    t++;
+    const k = 1 - Math.pow(1 - t/dur, 3);
+    camera.position.lerpVectors(startPos, endPos, k);
+    controls.target.lerpVectors(startTarget, target, k);
+    controls.update();
+    if (t < dur) requestAnimationFrame(animStep);
+  }
+  animStep();
+
+  showFocusRing(p);
+}
+
+function showFocusRing(p) {
+  const ring = document.getElementById('focus-ring');
+  ring.style.display = 'block';
+  function updateRingPos() {
+    const v = new THREE.Vector3(p.x, p.y, p.z);
+    v.project(camera);
+    const rect = viewport.getBoundingClientRect();
+    const sx = (v.x + 1) / 2 * rect.width + rect.left;
+    const sy = (-(v.y) + 1) / 2 * rect.height + rect.top;
+    ring.style.left = sx + 'px';
+    ring.style.top = sy + 'px';
+  }
+  updateRingPos();
+  window._ringUpdateFn = updateRingPos;
+}
+
+// ── SEARCH ───────────────────────────────────────────────────────────────
+const searchInput = document.getElementById('search-input');
+const searchClear = document.getElementById('search-clear');
+
+searchInput.addEventListener('input', () => {
+  searchQuery = searchInput.value;
+  searchClear.style.display = searchQuery ? 'block' : 'none';
+  updateVisibility();
+});
+
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchQuery = '';
+  searchClear.style.display = 'none';
+  updateVisibility();
+  searchInput.focus();
+});
+
+// ── INJECT DYNAMIC TYPE/TAG FILTER BUTTONS ───────────────────────────────
+{
+  const filterBar = document.getElementById('filter-bar');
+  const hiddenBtn = filterBar.querySelector('[data-filter="hidden"]');
+
+  const seenTypes = [...new Set(pointData.map(p => p.type).filter(Boolean))];
+  const typeColors = {
+    BASE: '#ffb800', HQ: '#ffb800', OUTPOST: '#ffb800',
+    STATION: '#CB75F1',
+    TRADE: '#00ff9d',
+    AST: '#ff7f50',
+    PLANET: '#75F1F1',
+    MOON: '#aaaacc',
+  };
+
+  for (const type of seenTypes) {
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn';
+    btn.dataset.filter = `type:${type}`;
+    btn.textContent = type;
+    filterBar.insertBefore(btn, hiddenBtn);
+  }
+
+  const seenTags = [...new Set(pointData.map(p => p.tag).filter(Boolean))];
+  const tagColors = { TCFT: '#75F1F1', IDMG: '#ffb800', RODE: '#00ff9d' };
+  for (const tag of seenTags) {
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn';
+    btn.dataset.filter = `tag:${tag}`;
+    btn.textContent = tag;
+    filterBar.insertBefore(btn, hiddenBtn);
+  }
+}
+
+// ── FILTER BUTTONS ───────────────────────────────────────────────────────
+document.getElementById('filter-bar').addEventListener('click', (e) => {
+  const btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentFilter = btn.dataset.filter;
+  updateVisibility();
+});
+
+// ── BULK ACTIONS ─────────────────────────────────────────────────────────
+document.getElementById('btn-show-all').addEventListener('click', () => {
+  pointData.forEach((p, i) => {
+    p.hidden = false;
+    const btn = document.querySelector(`.point-item[data-idx="${i}"] .pt-vis`);
+    if (btn) { btn.textContent = '◉'; btn.classList.remove('hidden'); }
+  });
+  updateVisibility();
+});
+
+document.getElementById('btn-hide-all').addEventListener('click', () => {
+  pointData.forEach((p, i) => {
+    p.hidden = true;
+    const btn = document.querySelector(`.point-item[data-idx="${i}"] .pt-vis`);
+    if (btn) { btn.textContent = '◌'; btn.classList.add('hidden'); }
+  });
+  updateVisibility();
+});
+
+document.getElementById('btn-hide-filtered').addEventListener('click', () => {
+  document.querySelectorAll('.point-item:not(.no-match)').forEach(item => {
+    const i = parseInt(item.dataset.idx);
+    pointData[i].hidden = true;
+    const btn = item.querySelector('.pt-vis');
+    if (btn) { btn.textContent = '◌'; btn.classList.add('hidden'); }
+  });
+  updateVisibility();
+});
+
+// ── SIDEBAR TOGGLE ───────────────────────────────────────────────────────
+const sidebar = document.getElementById('sidebar');
+const toggleBtn = document.getElementById('sidebar-toggle');
+toggleBtn.addEventListener('click', () => {
+  sidebar.classList.toggle('collapsed');
+  toggleBtn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+});
+
+// ── TOOLTIP ──────────────────────────────────────────────────────────────
+const tooltip = document.getElementById('tooltip');
+const raycaster = new THREE.Raycaster();
+raycaster.params.Mesh.threshold = pointSize * 0.5;
+const mouse = new THREE.Vector2();
+
+renderer.domElement.addEventListener('mousemove', (e) => {
+  const rect = viewport.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const visibleMeshes = meshes.filter(m => m.visible);
+  const hit = raycaster.intersectObjects(visibleMeshes, false)[0];
+  if (hit) {
+    const p = hit.object.userData;
+    tooltip.innerHTML = `<div class="tt-name">${p.name}</div><div class="tt-coord">X: ${p.x.toFixed(0)}\nY: ${p.y.toFixed(0)}\nZ: ${p.z.toFixed(0)}</div>${p.tag ? `<div class="tt-tag">▸ ${p.tag}</div>` : ''}`;
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top = (e.clientY + 14) + 'px';
+    tooltip.style.borderColor = p.color;
+    tooltip.style.boxShadow = `0 0 20px ${p.color}44`;
+    tooltip.style.display = 'block';
+    viewport.style.cursor = 'crosshair';
+  } else {
+    tooltip.style.display = 'none';
+    viewport.style.cursor = 'default';
+  }
+});
+
+renderer.domElement.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+renderer.domElement.addEventListener('click', (e) => {
+  const rect = viewport.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const visibleMeshes = meshes.filter(m => m.visible);
+  const hit = raycaster.intersectObjects(visibleMeshes, false)[0];
+  if (hit) {
+    const idx = pointData.indexOf(hit.object.userData);
+    if (measureMode) {
+      pickMeasurePoint(idx);
+    } else {
+      selectPoint(idx);
+      const item = document.querySelector(`.point-item[data-idx="${idx}"]`);
+      if (item) {
+        const list = document.getElementById('point-list');
+        list.scrollTop = item.offsetTop - list.clientHeight / 2 + item.offsetHeight / 2;
+      }
+    }
+  }
+});
+
+// ── HEADER COUNT ─────────────────────────────────────────────────────────
+document.getElementById('hdr-count').textContent = POINTS.length;
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('clock').textContent =
+    `${now.getUTCFullYear()}-${pad(now.getUTCMonth()+1)}-${pad(now.getUTCDate())} `+
+    `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())} UTC`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ── RESIZE ────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = viewport.clientWidth / viewport.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+});
+
+// ── RENDER LOOP ───────────────────────────────────────────────────────────
+let frame = 0;
+(function loop() {
+  requestAnimationFrame(loop);
+  controls.update();
+  frame++;
+
+  if (activeIdx !== null) {
+    const t = (Math.sin(frame * 0.05) + 1) / 2;
+    glows[activeIdx].material.opacity = 0.25 + t * 0.5;
+    glows[activeIdx].scale.setScalar(pointSize * (7 + t * 3));
+  }
+
+  if (window._ringUpdateFn) window._ringUpdateFn();
+
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>
