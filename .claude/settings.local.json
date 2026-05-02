@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python -c \"import ast; ast.parse\\(open\\(r'C:/Users/Hailfire/OneDrive/Documents/Space Engineers Mods/Space-Engingeers_GPS_Manager/VectorHandler.py'\\).read\\(\\)\\); print\\('OK'\\)\")"
-    ]
-  }
-}
