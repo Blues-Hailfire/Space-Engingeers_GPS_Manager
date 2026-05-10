@@ -272,6 +272,12 @@ async def reject_if_not_bound(interaction: discord.Interaction) -> bool:
 
 
 @bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        return
+
+
+@bot.event
 async def on_ready():
     init_db()
     print(f"We have logged in as {bot.user}")
