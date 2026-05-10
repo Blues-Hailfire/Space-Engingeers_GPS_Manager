@@ -44,6 +44,8 @@ def parse_gps_data(gps_string):
     except (IndexError, ValueError) as e:
         raise Exception("Not A Valid GPS point") from e
 
+    if len(name) > 32:
+        raise Exception(f"GPS name exceeds 32 character limit ({len(name)} characters)")
     return Vector3D(name, x, y, z, color)
 
 
@@ -472,6 +474,9 @@ async def revise_gps(interaction: discord.Interaction, index: int, name: Optiona
         return
     if name is None and color is None:
         await interaction.response.send_message("Provide at least one of `name` or `color` to update.", ephemeral=True)
+        return
+    if name is not None and len(name) > 32:
+        await interaction.response.send_message(f"Name exceeds the 32 character limit ({len(name)} characters).", ephemeral=True)
         return
     if revise_vector(interaction.guild.id, interaction.channel.id, index, name=name, color=color):
         parts = []
