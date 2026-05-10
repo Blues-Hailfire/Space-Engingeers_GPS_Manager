@@ -313,6 +313,7 @@ async def on_ready():
         print(f"Server Name: {guild.name}, Server ID: {guild.id}")
         bot.tree.copy_global_to(guild=guild)
         await bot.tree.sync(guild=guild)
+    await bot.tree.sync()
 
 
 async def send_paginated(interaction: discord.Interaction, header: str, lines: list):
