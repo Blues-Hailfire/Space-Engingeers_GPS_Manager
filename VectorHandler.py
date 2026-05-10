@@ -309,8 +309,6 @@ async def on_command_error(ctx, error):
 async def on_ready():
     init_db()
     print(f"We have logged in as {bot.user}")
-    bot.tree.clear_commands(guild=None)
-    await bot.tree.sync()
     for guild in bot.guilds:
         print(f"Server Name: {guild.name}, Server ID: {guild.id}")
         bot.tree.copy_global_to(guild=guild)
