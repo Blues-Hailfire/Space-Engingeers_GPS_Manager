@@ -1,6 +1,6 @@
 *.gitignore
 .idea/
 .claude/
-*.txt
+DiscordToken.txt
 *.db
 gps.db
