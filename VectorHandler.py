@@ -428,16 +428,10 @@ async def add_gps(interaction: discord.Interaction, gps_string: str):
 
 
 @bot.tree.command(name="bind", description="Bind the bot to respond only in this channel.")
-@commands.has_permissions(administrator=True)
+@discord.app_commands.default_permissions(administrator=True)
 async def bind(interaction: discord.Interaction):
     set_bind_channel(interaction.guild.id, interaction.channel.id)
     await interaction.response.send_message(f"Bot is now bound to this channel: {interaction.channel.name}")
-
-
-@bind.error
-async def bind_error(interaction: discord.Interaction, error: commands.CommandError):
-    if isinstance(error, commands.MissingPermissions):
-        await interaction.response.send_message("You do not have permission to run this command.", ephemeral=True)
 
 
 def argb_to_css_hex(color: str) -> str:
@@ -533,6 +527,18 @@ async def revise_gps(interaction: discord.Interaction, indices: str, name: Optio
         await interaction.response.send_message(f"Updated {len(parsed)} GPS point(s): {', '.join(parts)}.")
     else:
         await interaction.response.send_message("One or more indices were out of range. No points updated.", ephemeral=True)
+
+
+@bot.event
+async def on_ready():
+    """Sync slash commands when bot is ready."""
+    print(f"Logged in as {bot.user}")
+    try:
+        # Sync commands globally
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} command(s) globally")
+    except Exception as e:
+        print(f"Failed to sync commands: {e}")
 
 
 init_db()
