@@ -22,8 +22,15 @@ def main():
     if sys.version_info < (3, 8):
         sys.exit(f"Python 3.8+ required, found {sys.version.split()[0]}")
 
+    # ── Create requirements.txt if missing ───────────────────────────────
     if not REQUIREMENTS.exists():
-        sys.exit(f"Could not find {REQUIREMENTS}")
+        print(f"Creating {REQUIREMENTS.name} with required dependencies...")
+        REQUIREMENTS.write_text(
+            "# Discord.py - Discord bot library\n"
+            "discord.py>=2.0.0\n"
+        )
+        print(f"✓ Created {REQUIREMENTS.name}")
+
 
     # ── Create venv if it doesn't exist ──────────────────────────────────
     if not VENV_DIR.exists():
