@@ -72,16 +72,23 @@ def main():
     # ── Token reminder ────────────────────────────────────────────────────
     token_file = ROOT / "DiscordToken.txt"
     if not token_file.exists():
-        print(f"\nNote: {token_file.name} not found. "
-              "Create it and paste your Discord bot token before running the bot.")
+        print(f"\n⚠️  IMPORTANT: {token_file.name} not found!")
+        print(f"   Create it in the same directory as VectorHandler.py:")
+        print(f"   {ROOT / 'DiscordToken.txt'}")
+        print(f"   Then paste your Discord bot token into it (one line, no extra spaces).")
 
     # ── Done ──────────────────────────────────────────────────────────────
-    print("\nSetup complete.")
-    if sys.platform == "win32":
-        print(f"Run the bot with:  {venv_python} VectorHandler.py")
-    else:
-        print(f"Run the bot with:  {venv_python} VectorHandler.py")
-        print(f"  or activate first:  source {VENV_DIR}/bin/activate")
+    print("\n✅ Setup complete!")
+    print("\n📋 Next steps:")
+    print(f"   1. Ensure DiscordToken.txt exists in: {ROOT}")
+    print(f"   2. Run the bot with: {venv_python} VectorHandler.py")
+    if sys.platform != "win32":
+        print(f"      (or activate first: source {VENV_DIR}/bin/activate)")
+    print(f"\n🔄 Slash Commands Sync:")
+    print(f"   - Commands will sync automatically when the bot starts")
+    print(f"   - Look for 'Synced X command(s) globally' in the console")
+    print(f"   - Global sync can take up to 1-2 hours to appear in Discord")
+    print(f"   - Make sure your bot was invited with 'applications.commands' scope")
 
 
 if __name__ == "__main__":
