@@ -311,8 +311,6 @@ async def on_ready():
     print(f"We have logged in as {bot.user}")
     for guild in bot.guilds:
         print(f"Server Name: {guild.name}, Server ID: {guild.id}")
-        bot.tree.copy_global_to(guild=guild)
-        await bot.tree.sync(guild=guild)
     await bot.tree.sync()
 
 
