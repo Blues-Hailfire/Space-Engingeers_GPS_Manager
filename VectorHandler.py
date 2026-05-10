@@ -190,6 +190,15 @@ def load_vectors(guild_id, channel_id):
             for i, r in enumerate(rows)]
 
 
+def find_duplicate_coords(guild_id, channel_id, vector):
+    with db() as conn:
+        row = conn.execute(
+            "SELECT name FROM gps_points WHERE guild_id = ? AND channel_id = ? AND x = ? AND y = ? AND z = ?",
+            (guild_id, channel_id, vector.x, vector.y, vector.z),
+        ).fetchone()
+    return row["name"] if row else None
+
+
 def add_vector(guild_id, channel_id, vector):
     with db() as conn:
         conn.execute(
@@ -407,6 +416,10 @@ async def add_gps(interaction: discord.Interaction, gps_string: str):
             continue
         try:
             vector = parse_gps_data(gps)
+            duplicate = find_duplicate_coords(interaction.guild.id, interaction.channel.id, vector)
+            if duplicate:
+                await interaction.channel.send(f"Skipped `{vector.name}`: coordinates already exist as `{duplicate}`.")
+                continue
             add_vector(interaction.guild.id, interaction.channel.id, vector)
             await interaction.channel.send("Identified Point: " + str(vector))
         except Exception as e:
