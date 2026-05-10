@@ -6,6 +6,7 @@ import math
 import os
 import sqlite3
 from contextlib import contextmanager
+from typing import Optional
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="/", intents=discord.Intents.all())
@@ -280,7 +281,7 @@ async def on_ready():
 
 
 @bot.tree.command(name="search_gps", description="Search GPS points with various filters.")
-async def search_gps(interaction: discord.Interaction, search_string: str = None, reference_gps: str = None, distance_km: float = None):
+async def search_gps(interaction: discord.Interaction, search_string: Optional[str] = None, reference_gps: Optional[str] = None, distance_km: Optional[float] = None):
     """Search for GPS points with optional filters: reference GPS and distance."""
     if await reject_if_not_bound(interaction):
         return
@@ -443,7 +444,7 @@ async def remove_gps_range(interaction: discord.Interaction, start_index: int, e
 
 
 @bot.tree.command(name="revise", description="Revise the name and/or color of a GPS point by its index.")
-async def revise_gps(interaction: discord.Interaction, index: int, name: str = None, color: str = None):
+async def revise_gps(interaction: discord.Interaction, index: int, name: Optional[str] = None, color: Optional[str] = None):
     if await reject_if_not_bound(interaction):
         return
     if name is None and color is None:
