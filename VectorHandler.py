@@ -196,6 +196,27 @@ def add_vector(guild_id, channel_id, vector):
         )
 
 
+def revise_vector(guild_id, channel_id, index, name=None, color=None):
+    vectors = load_vectors(guild_id, channel_id)
+    if index < 1 or index > len(vectors):
+        return False
+    _, row_id, _ = vectors[index - 1]
+    updates = []
+    params = []
+    if name is not None:
+        updates.append("name = ?")
+        params.append(name)
+    if color is not None:
+        updates.append("color = ?")
+        params.append(color)
+    if not updates:
+        return False
+    params.append(row_id)
+    with db() as conn:
+        conn.execute(f"UPDATE gps_points SET {', '.join(updates)} WHERE id = ?", params)
+    return True
+
+
 def remove_vectors_by_index_range(guild_id, channel_id, start_index, end_index):
     vectors = load_vectors(guild_id, channel_id)
     if start_index < 1 or end_index > len(vectors) or start_index > end_index:
@@ -419,6 +440,24 @@ async def remove_gps_range(interaction: discord.Interaction, start_index: int, e
         await interaction.response.send_message(f"Removed GPS points from index {start_index} to {end_index}.")
     else:
         await interaction.response.send_message(f"Invalid index range: {start_index} to {end_index}")
+
+
+@bot.tree.command(name="revise", description="Revise the name and/or color of a GPS point by its index.")
+async def revise_gps(interaction: discord.Interaction, index: int, name: str = None, color: str = None):
+    if await reject_if_not_bound(interaction):
+        return
+    if name is None and color is None:
+        await interaction.response.send_message("Provide at least one of `name` or `color` to update.", ephemeral=True)
+        return
+    if revise_vector(interaction.guild.id, interaction.channel.id, index, name=name, color=color):
+        parts = []
+        if name is not None:
+            parts.append(f"name → `{name}`")
+        if color is not None:
+            parts.append(f"color → `{color}`")
+        await interaction.response.send_message(f"GPS point at index {index} updated: {', '.join(parts)}.")
+    else:
+        await interaction.response.send_message(f"No GPS point found at index {index}.", ephemeral=True)
 
 
 init_db()
