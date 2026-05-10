@@ -288,9 +288,36 @@ async def on_ready():
     await bot.tree.sync()
 
 
+async def send_paginated(interaction: discord.Interaction, header: str, lines: list):
+    LIMIT = 1900
+    responded = False
+    chunk = []
+    chunk_len = len(header) + 8  # account for header + ```\n and \n```
+
+    async def flush(current_chunk):
+        nonlocal responded
+        body = "```\n" + "\n".join(current_chunk) + "\n```"
+        if not responded:
+            await interaction.response.send_message(f"{header}\n{body}")
+            responded = True
+        else:
+            await interaction.followup.send(body)
+
+    for line in lines:
+        cost = len(line) + 1
+        if chunk and chunk_len + cost > LIMIT:
+            await flush(chunk)
+            chunk = []
+            chunk_len = 8
+        chunk.append(line)
+        chunk_len += cost
+
+    if chunk:
+        await flush(chunk)
+
+
 @bot.tree.command(name="search_gps", description="Search GPS points with various filters.")
 async def search_gps(interaction: discord.Interaction, search_string: Optional[str] = None, reference_gps: Optional[str] = None, distance_km: Optional[float] = None):
-    """Search for GPS points with optional filters: reference GPS and distance."""
     if await reject_if_not_bound(interaction):
         return
 
@@ -298,11 +325,8 @@ async def search_gps(interaction: discord.Interaction, search_string: Optional[s
 
     if search_string is None and reference_gps is None and distance_km is None:
         if vectors:
-            response = "**All GPS Points:**\n```"
-            for index, _, vector in vectors:
-                response += f"{index}: {vector}\n"
-            response += "```"
-            await interaction.response.send_message(response)
+            lines = [f"{index}: {vector}" for index, _, vector in vectors]
+            await send_paginated(interaction, "**All GPS Points:**", lines)
         else:
             await interaction.response.send_message("No GPS points found.")
         return
@@ -319,11 +343,8 @@ async def search_gps(interaction: discord.Interaction, search_string: Optional[s
                       for _, _, v in vectors]
             nearby = [(v, d) for v, d in nearby if d <= distance_km * 1000]
             if nearby:
-                response = f"**GPS Points within {distance_km} Km of {reference_point.name}:**\n```"
-                for vector, dist in nearby:
-                    response += f"{vector.name}: {vector} (Distance: {dist/1000:.2f} Km)\n"
-                response += "```"
-                await interaction.response.send_message(response)
+                lines = [f"{v.name}: {v} (Distance: {d/1000:.2f} Km)" for v, d in nearby]
+                await send_paginated(interaction, f"**GPS Points within {distance_km} Km of {reference_point.name}:**", lines)
             else:
                 await interaction.response.send_message(f"No GPS points found within {distance_km} Km of {reference_point.name}.")
             return
@@ -333,11 +354,8 @@ async def search_gps(interaction: discord.Interaction, search_string: Optional[s
                    if search_string and search_string.lower() in v.name.lower()]
         results.sort(key=lambda x: x[2])
         if results:
-            response = f"**Closest Points to {reference_point.name} containing '{search_string}':**\n```"
-            for index, vector, distance in results:
-                response += f"{index}: {vector}, Distance: {(distance / 1000):.2f} Km\n"
-            response += "```"
-            await interaction.response.send_message(response)
+            lines = [f"{idx}: {v}, Distance: {d/1000:.2f} Km" for idx, v, d in results]
+            await send_paginated(interaction, f"**Closest Points to {reference_point.name} containing '{search_string}':**", lines)
         else:
             await interaction.response.send_message(f"No GPS points found containing '{search_string}' near {reference_point.name}.")
         return
@@ -345,11 +363,8 @@ async def search_gps(interaction: discord.Interaction, search_string: Optional[s
     matches = [(idx, v) for idx, _, v in vectors
                if search_string.lower() in v.name.lower()]
     if matches:
-        response = f"**Results for '{search_string}':**\n```"
-        for index, vector in matches:
-            response += f"{index}: {vector}\n"
-        response += "```"
-        await interaction.response.send_message(response)
+        lines = [f"{idx}: {v}" for idx, v in matches]
+        await send_paginated(interaction, f"**Results for '{search_string}':**", lines)
     else:
         await interaction.response.send_message(f"No GPS points found containing '{search_string}'.")
 
