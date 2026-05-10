@@ -503,7 +503,7 @@ async def remove_gps_range(interaction: discord.Interaction, indices: str):
         await interaction.response.send_message("One or more indices were out of range. No points removed.", ephemeral=True)
 
 
-@bot.tree.command(name="revise", description="Revise the name and/or color of GPS points by index. Supports: 34 | 25-35 | 25,27,33 | 25-30,32,42-50")
+@bot.tree.command(name="revise", description="Revise the name and/or color of GPS points by index. Supports: 34 | 25-35 | 25,27,33")
 async def revise_gps(interaction: discord.Interaction, indices: str, name: Optional[str] = None, color: Optional[str] = None):
     if await reject_if_not_bound(interaction):
         return
