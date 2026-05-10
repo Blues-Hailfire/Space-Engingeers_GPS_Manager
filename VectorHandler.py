@@ -199,33 +199,59 @@ def add_vector(guild_id, channel_id, vector):
         )
 
 
-def revise_vector(guild_id, channel_id, index, name=None, color=None):
+def parse_index_string(index_str):
+    """Parse an index string into a sorted list of unique indices.
+    Supports: single (34), range (25-35), list (25, 27, 33), mixed (25-30, 32, 40, 42-50)."""
+    indices = set()
+    for part in index_str.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            bounds = part.split("-", 1)
+            start, end = int(bounds[0].strip()), int(bounds[1].strip())
+            if start > end:
+                raise ValueError(f"Invalid range {start}-{end}: start must be <= end")
+            indices.update(range(start, end + 1))
+        else:
+            indices.add(int(part))
+    return sorted(indices)
+
+
+def revise_vector(guild_id, channel_id, indices, name=None, color=None):
     vectors = load_vectors(guild_id, channel_id)
-    if index < 1 or index > len(vectors):
+    valid_indices = {idx for idx, _, _ in vectors}
+    if not all(i in valid_indices for i in indices):
         return False
-    _, row_id, _ = vectors[index - 1]
     updates = []
-    params = []
     if name is not None:
         updates.append("name = ?")
-        params.append(name)
     if color is not None:
         updates.append("color = ?")
-        params.append(color)
     if not updates:
         return False
-    params.append(row_id)
+    set_clause = ", ".join(updates)
+    index_set = set(indices)
     with db() as conn:
-        conn.execute(f"UPDATE gps_points SET {', '.join(updates)} WHERE id = ?", params)
+        for idx, row_id, _ in vectors:
+            if idx in index_set:
+                params = []
+                if name is not None:
+                    params.append(name)
+                if color is not None:
+                    params.append(color)
+                params.append(row_id)
+                conn.execute(f"UPDATE gps_points SET {set_clause} WHERE id = ?", params)
     return True
 
 
-def remove_vectors_by_index_range(guild_id, channel_id, start_index, end_index):
+def remove_vectors_by_indices(guild_id, channel_id, indices):
     vectors = load_vectors(guild_id, channel_id)
-    if start_index < 1 or end_index > len(vectors) or start_index > end_index:
+    valid_indices = {idx for idx, _, _ in vectors}
+    if not all(i in valid_indices for i in indices):
         return False
-    ids_to_delete = [row_id for idx, row_id, _ in vectors
-                     if start_index <= idx <= end_index]
+    index_set = set(indices)
+    ids_to_delete = [row_id for idx, row_id, _ in vectors if idx in index_set]
     with db() as conn:
         conn.executemany(
             "DELETE FROM gps_points WHERE id = ?",
@@ -457,19 +483,23 @@ async def map_gps(interaction: discord.Interaction):
     )
 
 
-@bot.tree.command(name="remove_gps_by_index_range", description="Remove GPS points between a range of indices (inclusive).")
-async def remove_gps_range(interaction: discord.Interaction, start_index: int, end_index: int):
-    """Remove GPS points between a range of indices (inclusive)."""
+@bot.tree.command(name="remove_gps_by_index_range", description="Remove GPS points by index. Supports: 34 | 25-35 | 25,27,33 | 25-30,32,42-50")
+async def remove_gps_range(interaction: discord.Interaction, indices: str):
     if await reject_if_not_bound(interaction):
         return
-    if remove_vectors_by_index_range(interaction.guild.id, interaction.channel.id, start_index, end_index):
-        await interaction.response.send_message(f"Removed GPS points from index {start_index} to {end_index}.")
+    try:
+        parsed = parse_index_string(indices)
+    except ValueError as e:
+        await interaction.response.send_message(f"Invalid index input: {e}", ephemeral=True)
+        return
+    if remove_vectors_by_indices(interaction.guild.id, interaction.channel.id, parsed):
+        await interaction.response.send_message(f"Removed {len(parsed)} GPS point(s).")
     else:
-        await interaction.response.send_message(f"Invalid index range: {start_index} to {end_index}")
+        await interaction.response.send_message("One or more indices were out of range. No points removed.", ephemeral=True)
 
 
-@bot.tree.command(name="revise", description="Revise the name and/or color of a GPS point by its index.")
-async def revise_gps(interaction: discord.Interaction, index: int, name: Optional[str] = None, color: Optional[str] = None):
+@bot.tree.command(name="revise", description="Revise the name and/or color of GPS points by index. Supports: 34 | 25-35 | 25,27,33 | 25-30,32,42-50")
+async def revise_gps(interaction: discord.Interaction, indices: str, name: Optional[str] = None, color: Optional[str] = None):
     if await reject_if_not_bound(interaction):
         return
     if name is None and color is None:
@@ -478,15 +508,20 @@ async def revise_gps(interaction: discord.Interaction, index: int, name: Optiona
     if name is not None and len(name) > 32:
         await interaction.response.send_message(f"Name exceeds the 32 character limit ({len(name)} characters).", ephemeral=True)
         return
-    if revise_vector(interaction.guild.id, interaction.channel.id, index, name=name, color=color):
+    try:
+        parsed = parse_index_string(indices)
+    except ValueError as e:
+        await interaction.response.send_message(f"Invalid index input: {e}", ephemeral=True)
+        return
+    if revise_vector(interaction.guild.id, interaction.channel.id, parsed, name=name, color=color):
         parts = []
         if name is not None:
             parts.append(f"name → `{name}`")
         if color is not None:
             parts.append(f"color → `{color}`")
-        await interaction.response.send_message(f"GPS point at index {index} updated: {', '.join(parts)}.")
+        await interaction.response.send_message(f"Updated {len(parsed)} GPS point(s): {', '.join(parts)}.")
     else:
-        await interaction.response.send_message(f"No GPS point found at index {index}.", ephemeral=True)
+        await interaction.response.send_message("One or more indices were out of range. No points updated.", ephemeral=True)
 
 
 init_db()
